@@ -1,0 +1,17 @@
+services:
+  vektor:
+    build: .
+    ports:
+      - "8659:8659"
+    volumes:
+      - vektor-data:/data
+    environment:
+      VEKTOR_LISTEN: ":8659"
+      VEKTOR_OIDC_ISSUER: "https://auth.example.com"
+      VEKTOR_OIDC_CLIENT_ID: ""
+      VEKTOR_OIDC_CLIENT_SECRET: ""
+      VEKTOR_OIDC_REDIRECT_URL: "https://vektor.example.com/auth/callback"
+    restart: unless-stopped
+
+volumes:
+  vektor-data:
