@@ -11,17 +11,20 @@ import (
 )
 
 type Server struct {
-	db   *sql.DB
-	auth *auth.Auth
-	mux  *http.ServeMux
+	db    *sql.DB
+	auth  *auth.Auth
+	local *auth.Local
+	mux   *http.ServeMux
 }
 
-func NewServer(db *sql.DB, a *auth.Auth) *Server {
+func NewServer(db *sql.DB, a *auth.Auth, l *auth.Local) *Server {
 	s := &Server{
-		db:   db,
-		auth: a,
-		mux:  http.NewServeMux(),
+		db:    db,
+		auth:  a,
+		local: l,
+		mux:   http.NewServeMux(),
 	}
+
 	s.routes()
 	return s
 }
@@ -32,8 +35,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) routes() {
 	// Auth routes (unauthenticated)
-	s.mux.HandleFunc("GET /auth/login", s.auth.LoginHandler())
-	s.mux.HandleFunc("GET /auth/callback", s.auth.CallbackHandler(s.handleAuthCallback))
+	if s.local != nil {
+		s.mux.HandleFunc("POST /auth/register", s.local.RegisterHandler())
+		s.mux.HandleFunc("POST /auth/login", s.local.LoginHandler())
+	} else {
+		s.mux.HandleFunc("GET /auth/login", s.auth.LoginHandler())
+		s.mux.HandleFunc("GET /auth/callback", s.auth.CallbackHandler(s.handleAuthCallback))
+	}
 
 	// API routes (authenticated)
 	api := http.NewServeMux()

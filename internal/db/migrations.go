@@ -45,6 +45,9 @@ var migrations = []string{
 		label_id TEXT NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
 		PRIMARY KEY (issue_id, label_id)
 	)`,
+	`
+	ALTER TABLE users ADD COLUMN password_hash TEXT
+	`, // Later, let's make sure that other snippets follow this format
 }
 
 func migrate(db *sql.DB) error {

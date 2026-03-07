@@ -15,6 +15,9 @@ type Config struct {
 	OIDCClientID     string
 	OIDCClientSecret string
 	OIDCRedirectURL  string
+
+	// User Registration
+	LocalAuth bool
 }
 
 func Load() (*Config, error) {
@@ -25,16 +28,19 @@ func Load() (*Config, error) {
 		OIDCClientID:     os.Getenv("VEKTOR_OIDC_CLIENT_ID"),
 		OIDCClientSecret: os.Getenv("VEKTOR_OIDC_CLIENT_SECRET"),
 		OIDCRedirectURL:  os.Getenv("VEKTOR_OIDC_REDIRECT_URL"),
+		LocalAuth:        envOr("VEKTOR_LOCAL_AUTH", "false") == "true",
 	}
 
-	if cfg.OIDCIssuer == "" {
-		return nil, fmt.Errorf("VEKTOR_OIDC_ISSUER is required")
-	}
-	if cfg.OIDCClientID == "" {
-		return nil, fmt.Errorf("VEKTOR_OIDC_CLIENT_ID is required")
-	}
-	if cfg.OIDCClientSecret == "" {
-		return nil, fmt.Errorf("VEKTOR_OIDC_CLIENT_SECRET is required")
+	if !cfg.LocalAuth {
+		if cfg.OIDCIssuer == "" {
+			return nil, fmt.Errorf("VEKTOR_OIDC_ISSUER is required")
+		}
+		if cfg.OIDCClientID == "" {
+			return nil, fmt.Errorf("VEKTOR_OIDC_CLIENT_ID is required")
+		}
+		if cfg.OIDCClientSecret == "" {
+			return nil, fmt.Errorf("VEKTOR_OIDC_CLIENT_SECRET is required")
+		}
 	}
 
 	return cfg, nil
