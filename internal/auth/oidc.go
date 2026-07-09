@@ -2,35 +2,32 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
-	"encoding/json"
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
 
-type contextKey string
-
-const userContextKey contextKey = "user"
-
-type Claims struct {
-	Sub   string `json:"sub"`
-	Email string `json:"email"`
-	Name  string `json:"name"`
-}
-
 type Auth struct {
 	provider *oidc.Provider
 	verifier *oidc.IDTokenVerifier
 	oauth    oauth2.Config
+	db       *sql.DB
 }
 
-func New(ctx context.Context, issuer, clientID, clientSecret, redirectURL string) (*Auth, error) {
+func New(
+	ctx context.Context,
+	issuer,
+	clientID,
+	clientSecret,
+	redirectURL string,
+	db *sql.DB,
+) (*Auth, error) {
+
 	provider, err := oidc.NewProvider(ctx, issuer)
 	if err != nil {
 		return nil, fmt.Errorf("discovering OIDC provider: %w", err)
@@ -50,6 +47,7 @@ func New(ctx context.Context, issuer, clientID, clientSecret, redirectURL string
 		provider: provider,
 		verifier: verifier,
 		oauth:    oauth,
+		db:       db,
 	}, nil
 }
 
@@ -74,7 +72,7 @@ func (a *Auth) LoginHandler() http.HandlerFunc {
 	}
 }
 
-func (a *Auth) CallbackHandler(onSuccess func(w http.ResponseWriter, r *http.Request, claims *Claims)) http.HandlerFunc {
+func (a *Auth) CallbackHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		stateCookie, err := r.Cookie("vektor_state")
 		if err != nil || r.URL.Query().Get("state") != stateCookie.Value {
@@ -106,81 +104,34 @@ func (a *Auth) CallbackHandler(onSuccess func(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		onSuccess(w, r, &claims)
-	}
-}
-
-func (a *Auth) Middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("vektor_session")
+		// Upsert user in DB
+		_, err = a.db.ExecContext(r.Context(),
+			`INSERT INTO users (id, email, name) VALUES (?, ?, ?)
+			 ON CONFLICT(id) DO UPDATE SET email=excluded.email, name=excluded.name`,
+			claims.Sub, claims.Email, claims.Name,
+		)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			log.Printf("error upserting user: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
-		claims, err := a.validateSession(cookie.Value)
+		cookieToken, err := CreateSessionToken(&claims, 7*24*time.Hour)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), userContextKey, claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "vektor_session",
+			Value:    cookieToken,
+			Path:     "/",
+			MaxAge:   7 * 24 * 60 * 60,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
 
-func (a *Auth) validateSession(token string) (*Claims, error) {
-	parts := strings.SplitN(token, ".", 2)
-	if len(parts) != 1 {
-		return nil, fmt.Errorf("invalid session format")
+		http.Redirect(w, r, "/", http.StatusFound)
 	}
 
-	data, err := base64.RawURLEncoding.DecodeString(token)
-	if err != nil {
-		return nil, fmt.Errorf("invalid session encoding")
-	}
-
-	var session struct {
-		Claims Claims `json:"claims"`
-		Exp    int64  `json:"exp"`
-	}
-	if err := json.Unmarshal(data, &session); err != nil {
-		return nil, fmt.Errorf("invalid session data")
-	}
-
-	if time.Now().Unix() > session.Exp {
-		return nil, fmt.Errorf("session expired")
-	}
-
-	return &session.Claims, nil
-}
-
-func CreateSessionToken(claims *Claims, ttl time.Duration) (string, error) {
-	session := struct {
-		Claims Claims `json:"claims"`
-		Exp    int64  `json:"exp"`
-	}{
-		Claims: *claims,
-		Exp:    time.Now().Add(ttl).Unix(),
-	}
-
-	data, err := json.Marshal(session)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.RawURLEncoding.EncodeToString(data), nil
-}
-
-func UserFromContext(ctx context.Context) *Claims {
-	claims, _ := ctx.Value(userContextKey).(*Claims)
-	return claims
-}
-
-func randomState() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
 }

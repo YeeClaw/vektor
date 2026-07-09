@@ -54,7 +54,7 @@ func serveCmd() *cobra.Command {
 			if cfg.OIDCIssuer != "" {
 				ctx := context.Background()
 
-				oidcAuth, err := auth.New(ctx, cfg.OIDCIssuer, cfg.OIDCClientID, cfg.OIDCClientSecret, cfg.OIDCRedirectURL)
+				oidcAuth, err := auth.New(ctx, cfg.OIDCIssuer, cfg.OIDCClientID, cfg.OIDCClientSecret, cfg.OIDCRedirectURL, database)
 				if err != nil {
 					return fmt.Errorf("setting up OIDC: %w", err)
 				}
