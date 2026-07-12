@@ -17,7 +17,7 @@ type Server struct {
 func NewServer(db *sql.DB, a authn.Authenticator) *Server {
 	s := &Server{
 		db:    db,
-		authn:  a,
+		authn: a,
 		mux:   http.NewServeMux(),
 	}
 

@@ -12,6 +12,7 @@ import (
 )
 
 type contextKey string
+
 const userContextKey contextKey = "user"
 
 type SessionManager struct {
@@ -23,7 +24,6 @@ type Claims struct {
 	Email string `json:"email"`
 	Name  string `json:"name"`
 }
-
 
 func (s *SessionManager) CreateSessionToken(claims *Claims, ttl time.Duration) (string, error) {
 	session := struct {
