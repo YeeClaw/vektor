@@ -30,6 +30,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) routes() {
+	// Unauthenticated routes (such as ogin and what not)
+	s.authn.RegisterPublicRoutes(s.mux)
+
 	// API routes (authenticated)
 	api := http.NewServeMux()
 	api.HandleFunc("GET /api/projects", s.handleListProjects)
