@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
-	"forge.coltco.net/austin/vektor/internal/auth"
+	"forge.coltco.net/austin/vektor/internal/authn"
 	"forge.coltco.net/austin/vektor/internal/models"
 
 	"github.com/google/uuid"
@@ -69,7 +69,7 @@ func (s *Server) handleCreateIssue(w http.ResponseWriter, r *http.Request) {
 	var maxNum int
 	s.db.QueryRowContext(r.Context(), "SELECT COALESCE(MAX(number), 0) FROM issues WHERE project_id = ?", projectID).Scan(&maxNum)
 
-	claims := auth.UserFromContext(r.Context())
+	claims := authn.UserFromContext(r.Context())
 	id := uuid.New().String()
 	status := input.Status
 	if status == "" {

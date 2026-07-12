@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"forge.coltco.net/austin/vektor/internal/auth"
+	"forge.coltco.net/austin/vektor/internal/authn"
 	"forge.coltco.net/austin/vektor/internal/models"
 
 	"github.com/google/uuid"
@@ -47,7 +47,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	claims := auth.UserFromContext(r.Context())
+	claims := authn.UserFromContext(r.Context())
 	id := uuid.New().String()
 
 	_, err := s.db.ExecContext(r.Context(),

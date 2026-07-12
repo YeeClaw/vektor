@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"forge.coltco.net/austin/vektor/internal/api"
-	"forge.coltco.net/austin/vektor/internal/auth"
+	"forge.coltco.net/austin/vektor/internal/authn"
 	"forge.coltco.net/austin/vektor/internal/config"
 	"forge.coltco.net/austin/vektor/internal/db"
 
@@ -54,7 +54,7 @@ func serveCmd() *cobra.Command {
 			if cfg.OIDCIssuer != "" {
 				ctx := context.Background()
 
-				oidcAuth, err := auth.New(ctx, cfg.OIDCIssuer, cfg.OIDCClientID, cfg.OIDCClientSecret, cfg.OIDCRedirectURL, database)
+				oidcAuth, err := authn.New(ctx, cfg.OIDCIssuer, cfg.OIDCClientID, cfg.OIDCClientSecret, cfg.OIDCRedirectURL, database)
 				if err != nil {
 					return fmt.Errorf("setting up OIDC: %w", err)
 				}
@@ -64,7 +64,7 @@ func serveCmd() *cobra.Command {
 					Handler: api.NewServer(database, oidcAuth, nil),
 				}
 			} else {
-				localAuth := auth.NewLocal(database)
+				localAuth := authn.NewLocal(database)
 
 				srv = http.Server{
 					Addr:    cfg.ListenAddr,
