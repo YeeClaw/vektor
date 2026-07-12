@@ -10,16 +10,14 @@ import (
 
 type Server struct {
 	db    *sql.DB
-	auth  *auth.Auth
-	local *auth.Local
+	authn authn.Authenticator
 	mux   *http.ServeMux
 }
 
-func NewServer(db *sql.DB, a *auth.Auth, l *auth.Local) *Server {
+func NewServer(db *sql.DB, a authn.Authenticator) *Server {
 	s := &Server{
 		db:    db,
-		auth:  a,
-		local: l,
+		authn:  a,
 		mux:   http.NewServeMux(),
 	}
 
@@ -41,11 +39,11 @@ func (s *Server) routes() {
 	api.HandleFunc("PATCH /api/issues/{id}", s.handleUpdateIssue)
 	api.HandleFunc("GET /api/me", s.handleMe)
 
-	s.mux.Handle("/api/", auth.Middleware(api))
+	s.mux.Handle("/api/", s.authn.Middleware(api))
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
-	claims := auth.UserFromContext(r.Context())
+	claims := authn.UserFromContext(r.Context())
 	writeJSON(w, http.StatusOK, claims)
 }
 
