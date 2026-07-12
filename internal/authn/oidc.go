@@ -12,7 +12,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type Auth struct {
+type OIDC struct {
 	provider *oidc.Provider
 	verifier *oidc.IDTokenVerifier
 	oauth    oauth2.Config
@@ -27,7 +27,7 @@ func NewOIDC(
 	clientSecret,
 	redirectURL string,
 	db *sql.DB,
-) (*Auth, error) {
+) (*OIDC, error) {
 
 	provider, err := oidc.NewProvider(ctx, issuer)
 	if err != nil {
@@ -44,7 +44,7 @@ func NewOIDC(
 
 	verifier := provider.Verifier(&oidc.Config{ClientID: clientID})
 
-	return &Auth{
+	return &OIDC{
 		provider: provider,
 		verifier: verifier,
 		oauth:    oauth,
@@ -52,12 +52,12 @@ func NewOIDC(
 	}, nil
 }
 
-func (a *Auth) RegisterPublicRoutes(mux *http.ServeMux) {
+func (a *OIDC) RegisterPublicRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/login", a.loginHandler)
 	mux.HandleFunc("GET /auth/callback", a.callbackHandler)
 }
 
-func (a *Auth) loginHandler(w http.ResponseWriter, r *http.Request) {
+func (a *OIDC) loginHandler(w http.ResponseWriter, r *http.Request) {
 	state, err := randomState()
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -76,7 +76,7 @@ func (a *Auth) loginHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, a.oauth.AuthCodeURL(state), http.StatusFound)
 }
 
-func (a *Auth) callbackHandler(w http.ResponseWriter, r *http.Request) {
+func (a *OIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 	stateCookie, err := r.Cookie("vektor_state")
 	if err != nil || r.URL.Query().Get("state") != stateCookie.Value {
 		http.Error(w, "invalid state", http.StatusBadRequest)

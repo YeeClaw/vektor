@@ -8,5 +8,5 @@ type Authenticator interface {
 	Middleware(next http.Handler) http.Handler
 }
 
-var _ Authenticator = (*Auth)(nil)
+var _ Authenticator = (*OIDC)(nil)
 var _ Authenticator = (*Local)(nil)
