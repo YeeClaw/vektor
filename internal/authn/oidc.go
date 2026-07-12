@@ -20,7 +20,7 @@ type Auth struct {
 	SessionManager
 }
 
-func New(
+func NewOIDC(
 	ctx context.Context,
 	issuer,
 	clientID,
