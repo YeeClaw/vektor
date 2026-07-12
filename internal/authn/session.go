@@ -1,4 +1,4 @@
-package auth
+package authn
 
 import (
 	"context"
@@ -12,8 +12,11 @@ import (
 )
 
 type contextKey string
-
 const userContextKey contextKey = "user"
+
+type SessionManager struct {
+	// Empty today--will have more information as OIDC and Local auth are fleshed out
+}
 
 type Claims struct {
 	Sub   string `json:"sub"`
@@ -21,7 +24,8 @@ type Claims struct {
 	Name  string `json:"name"`
 }
 
-func CreateSessionToken(claims *Claims, ttl time.Duration) (string, error) {
+
+func (s *SessionManager) CreateSessionToken(claims *Claims, ttl time.Duration) (string, error) {
 	session := struct {
 		Claims Claims `json:"claims"`
 		Exp    int64  `json:"exp"`
@@ -38,8 +42,9 @@ func CreateSessionToken(claims *Claims, ttl time.Duration) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(data), nil
 }
 
-func ValidateSession(token string) (*Claims, error) {
+func (s *SessionManager) ValidateSession(token string) (*Claims, error) {
 	parts := strings.SplitN(token, ".", 2)
+	// This assumes JWT but will change when I implement HMAC
 	if len(parts) != 1 {
 		return nil, fmt.Errorf("invalid session format")
 	}
@@ -64,7 +69,7 @@ func ValidateSession(token string) (*Claims, error) {
 	return &session.Claims, nil
 }
 
-func Middleware(next http.Handler) http.Handler {
+func (s *SessionManager) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("vektor_session")
 		if err != nil {
@@ -72,7 +77,7 @@ func Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := ValidateSession(cookie.Value)
+		claims, err := s.ValidateSession(cookie.Value)
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return

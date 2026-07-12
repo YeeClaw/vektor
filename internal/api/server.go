@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"forge.coltco.net/austin/vektor/internal/auth"
+	"forge.coltco.net/austin/vektor/internal/authn"
 )
 
 type Server struct {
@@ -32,15 +32,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) routes() {
-	// Auth routes (unauthenticated)
-	if s.local != nil {
-		s.mux.HandleFunc("POST /auth/register", s.local.RegisterHandler())
-		s.mux.HandleFunc("POST /auth/login", s.local.LoginHandler())
-	} else {
-		s.mux.HandleFunc("GET /auth/login", s.auth.LoginHandler())
-		s.mux.HandleFunc("GET /auth/callback", s.auth.CallbackHandler())
-	}
-
 	// API routes (authenticated)
 	api := http.NewServeMux()
 	api.HandleFunc("GET /api/projects", s.handleListProjects)
