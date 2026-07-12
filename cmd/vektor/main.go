@@ -51,25 +51,31 @@ func serveCmd() *cobra.Command {
 			defer database.Close()
 
 			var srv http.Server
+			var authenticator authn.Authenticator
+
 			if cfg.OIDCIssuer != "" {
 				ctx := context.Background()
 
-				oidcAuth, err := authn.New(ctx, cfg.OIDCIssuer, cfg.OIDCClientID, cfg.OIDCClientSecret, cfg.OIDCRedirectURL, database)
+				oidcAuth, err := authn.NewOIDC(
+					ctx, 
+					cfg.OIDCIssuer, 
+					cfg.OIDCClientID, 
+					cfg.OIDCClientSecret, 
+					cfg.OIDCRedirectURL, 
+					database,
+				)
 				if err != nil {
 					return fmt.Errorf("setting up OIDC: %w", err)
 				}
 
-				srv = http.Server{
-					Addr:    cfg.ListenAddr,
-					Handler: api.NewServer(database, oidcAuth, nil),
-				}
+				authenticator = oidcAuth
 			} else {
-				localAuth := authn.NewLocal(database)
+				authenticator = authn.NewLocal(database)
+			}
 
-				srv = http.Server{
-					Addr:    cfg.ListenAddr,
-					Handler: api.NewServer(database, nil, localAuth),
-				}
+			srv = http.Server{
+				Addr:    cfg.ListenAddr,
+				Handler: api.NewServer(database, authenticator),
 			}
 
 			// Graceful shutdown
