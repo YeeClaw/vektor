@@ -53,7 +53,7 @@ func serveCmd() *cobra.Command {
 			var srv http.Server
 			var authenticator authn.Authenticator
 
-			if cfg.OIDCIssuer != "" {
+			if !cfg.LocalAuth {
 				ctx := context.Background()
 
 				oidcAuth, err := authn.NewOIDC(
