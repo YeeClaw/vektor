@@ -5,19 +5,19 @@ RUN npm ci
 COPY web/ ./
 RUN npm run build
 
-FROM golang:1.24-alpine AS backend
+FROM golang:1.26-alpine AS backend
 WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=frontend /build/web/dist ./web/dist
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /vektor ./cmd/vektor
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /vek ./cmd/vek
 
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates
-COPY --from=backend /vektor /usr/local/bin/vektor
+COPY --from=backend /vek /usr/local/bin/vek
 EXPOSE 8659
 VOLUME /data
 ENV VEKTOR_DATA_DIR=/data
-ENTRYPOINT ["vektor"]
+ENTRYPOINT ["vek"]
 CMD ["serve"]
