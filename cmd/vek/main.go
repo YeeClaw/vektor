@@ -22,7 +22,7 @@ var version = "dev"
 
 func main() {
 	root := &cobra.Command{
-		Use:     "vektor",
+		Use:     "vek",
 		Short:   "Self-hosted project management",
 		Version: version,
 	}

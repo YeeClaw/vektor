@@ -27,7 +27,7 @@ A self-hosted project management tool built for individuals and small teams. Des
 
 ```sh
 export VEKTOR_LOCAL_AUTH=true
-go run ./cmd/vektor serve
+go run ./cmd/vek serve
 ```
 
 The server starts on `:8659` by default.
@@ -39,7 +39,7 @@ export VEKTOR_OIDC_ISSUER=https://auth.example.com
 export VEKTOR_OIDC_CLIENT_ID=vektor
 export VEKTOR_OIDC_CLIENT_SECRET=your-secret
 export VEKTOR_OIDC_REDIRECT_URL=https://vektor.example.com/auth/callback
-go run ./cmd/vektor serve
+go run ./cmd/vek serve
 ```
 
 ### Docker
@@ -67,7 +67,7 @@ All configuration is via environment variables.
 ## Project Structure
 
 ```
-cmd/vektor/          Entry point, CLI commands
+cmd/vek/          Entry point, CLI commands
 internal/
   api/               HTTP handlers and routing
   auth/              OIDC and local authentication
