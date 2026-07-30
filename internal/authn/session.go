@@ -2,7 +2,9 @@ package authn
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -17,6 +19,7 @@ const userContextKey contextKey = "user"
 
 type SessionManager struct {
 	// Empty today--will have more information as OIDC and Local auth are fleshed out
+	SessionSecret []byte // HMAC signing key. Derived from config
 }
 
 type Claims struct {
@@ -39,17 +42,41 @@ func (s *SessionManager) CreateSessionToken(claims *Claims, ttl time.Duration) (
 		return "", err
 	}
 
-	return base64.RawURLEncoding.EncodeToString(data), nil
+	payload := base64.RawURLEncoding.EncodeToString(data)
+	mac := hmac.New(sha256.New, s.SessionSecret)
+
+	mac.Write([]byte(payload))
+	signature := mac.Sum(nil)
+
+	token := payload + "." + base64.RawURLEncoding.EncodeToString(signature)
+	return token, nil
 }
 
 func (s *SessionManager) ValidateSession(token string) (*Claims, error) {
 	parts := strings.SplitN(token, ".", 2)
-	// This assumes JWT but will change when I implement HMAC
-	if len(parts) != 1 {
+	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid session format")
 	}
 
-	data, err := base64.RawURLEncoding.DecodeString(token)
+	// Validate HMAC
+	payload := parts[0]
+	sentBase64Sig := parts[1]
+
+	mac := hmac.New(sha256.New, s.SessionSecret)
+	mac.Write([]byte(payload))
+
+	expected := mac.Sum(nil)
+	sentSig, err := base64.RawURLEncoding.DecodeString(sentBase64Sig)
+	if err != nil {
+		return nil, fmt.Errorf("signature isn't valid Base64 text")
+	}
+
+	if !hmac.Equal(expected, sentSig) {
+		return nil, fmt.Errorf("invalid session signature")
+	}
+
+	// Process session data
+	data, err := base64.RawURLEncoding.DecodeString(payload)
 	if err != nil {
 		return nil, fmt.Errorf("invalid session encoding")
 	}

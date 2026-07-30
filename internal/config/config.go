@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 )
 
@@ -16,8 +17,9 @@ type Config struct {
 	OIDCClientSecret string
 	OIDCRedirectURL  string
 
-	// User Registration
-	LocalAuth bool
+	// Session
+	LocalAuth     bool
+	SessionSecret string
 }
 
 func Load() (*Config, error) {
@@ -29,6 +31,7 @@ func Load() (*Config, error) {
 		OIDCClientSecret: os.Getenv("VEKTOR_OIDC_CLIENT_SECRET"),
 		OIDCRedirectURL:  os.Getenv("VEKTOR_OIDC_REDIRECT_URL"),
 		LocalAuth:        envOr("VEKTOR_LOCAL_AUTH", "false") == "true",
+		SessionSecret:    os.Getenv("VEKTOR_SESSION_SECRET"),
 	}
 
 	if !cfg.LocalAuth {
@@ -41,6 +44,12 @@ func Load() (*Config, error) {
 		if cfg.OIDCClientSecret == "" {
 			return nil, fmt.Errorf("VEKTOR_OIDC_CLIENT_SECRET is required")
 		}
+	}
+
+	if cfg.SessionSecret == "" {
+		return nil, fmt.Errorf("VEKTOR_SESSION_SECRET is required")
+	} else if len(cfg.SessionSecret) < 32 {
+		slog.Warn("Session secret is less than 32 characters. This is less secure!")
 	}
 
 	return cfg, nil

@@ -62,6 +62,7 @@ func serveCmd() *cobra.Command {
 					cfg.OIDCClientID,
 					cfg.OIDCClientSecret,
 					cfg.OIDCRedirectURL,
+					[]byte(cfg.SessionSecret),
 					database,
 				)
 				if err != nil {
@@ -70,7 +71,10 @@ func serveCmd() *cobra.Command {
 
 				authenticator = oidcAuth
 			} else {
-				authenticator = authn.NewLocal(database)
+				authenticator = authn.NewLocal(
+					[]byte(cfg.SessionSecret),
+					database,
+				)
 			}
 
 			srv = http.Server{
