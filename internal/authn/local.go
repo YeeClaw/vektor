@@ -18,8 +18,8 @@ type Local struct {
 func NewLocal(sessionSecret []byte, db *sql.DB) *Local {
 	sessionManager := SessionManager{SessionSecret: sessionSecret}
 	return &Local{
-		db:             db,
 		SessionManager: sessionManager,
+		db:             db,
 	}
 }
 

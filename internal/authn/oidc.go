@@ -50,8 +50,8 @@ func NewOIDC(
 		provider:       provider,
 		verifier:       verifier,
 		oauth:          oauth,
-		db:             db,
 		SessionManager: sessionManager,
+		db:             db,
 	}, nil
 }
 
