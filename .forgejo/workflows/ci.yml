@@ -10,7 +10,7 @@ jobs:
   build-test-check:
     runs-on: node-alpine
     steps:
-      - run: apk add --no-cache go git make
+      - run: apk add --no-cache go git make tar
 
       - uses: https://data.forgejo.org/actions/checkout@v4
         with: 
