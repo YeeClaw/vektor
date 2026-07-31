@@ -15,8 +15,12 @@ type Local struct {
 	SessionManager
 }
 
-func NewLocal(db *sql.DB) *Local {
-	return &Local{db: db}
+func NewLocal(sessionSecret []byte, db *sql.DB) *Local {
+	sessionManager := SessionManager{SessionSecret: sessionSecret}
+	return &Local{
+		SessionManager: sessionManager,
+		db:             db,
+	}
 }
 
 func (l *Local) RegisterPublicRoutes(mux *http.ServeMux) {

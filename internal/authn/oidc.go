@@ -26,6 +26,7 @@ func NewOIDC(
 	clientID,
 	clientSecret,
 	redirectURL string,
+	sessionSecret []byte,
 	db *sql.DB,
 ) (*OIDC, error) {
 
@@ -43,12 +44,14 @@ func NewOIDC(
 	}
 
 	verifier := provider.Verifier(&oidc.Config{ClientID: clientID})
+	sessionManager := SessionManager{SessionSecret: sessionSecret}
 
 	return &OIDC{
-		provider: provider,
-		verifier: verifier,
-		oauth:    oauth,
-		db:       db,
+		provider:       provider,
+		verifier:       verifier,
+		oauth:          oauth,
+		SessionManager: sessionManager,
+		db:             db,
 	}, nil
 }
 
