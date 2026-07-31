@@ -1,0 +1,30 @@
+name: continuous-integration
+
+on:
+  push:
+    # Filter to ONLY main. Build when main is pushed to (i.e. after a PR)
+    branches: [main]
+  pull_request: # No filter--runs on every PR
+
+jobs:
+  build-test-check:
+    runs-on: node-alpine
+    steps:
+      - run: apk add --no-cache go git make
+
+      - uses: https://data.forgejo.org/actions/checkout@v4
+        with: 
+          fetch-depth: 0
+
+      # Cache related Go dependencies
+      - uses: https://data.forgejo.org/actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ hashFiles('go.sum') }}
+          restore-keys: go-
+
+      - run: make build
+      - run: make test
+      - run: make check
