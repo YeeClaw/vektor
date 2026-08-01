@@ -28,6 +28,9 @@ type Claims struct {
 	Name  string `json:"name"`
 }
 
+// CreateSessionToken generates a token based on provided Claims and a given time-to-live
+// as a time constant. Returns a base64 encoding string with the payload and signature or an
+// error.
 func (s *SessionManager) CreateSessionToken(claims *Claims, ttl time.Duration) (string, error) {
 	session := struct {
 		Claims Claims `json:"claims"`
@@ -52,6 +55,8 @@ func (s *SessionManager) CreateSessionToken(claims *Claims, ttl time.Duration) (
 	return token, nil
 }
 
+// ValidateSession takes a given token in <base64 payload>.<base64 signature>, validates
+// the signature based on the SessionSecret and returns the entitled Claims.
 func (s *SessionManager) ValidateSession(token string) (*Claims, error) {
 	parts := strings.SplitN(token, ".", 2)
 	if len(parts) != 2 {
