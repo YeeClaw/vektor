@@ -22,7 +22,7 @@ type Config struct {
 	SessionSecret string
 }
 
-func Load() (*Config, error) {
+func Load(logger *slog.Logger) (*Config, error) {
 	cfg := &Config{
 		ListenAddr:       envOr("VEKTOR_LISTEN", ":8659"),
 		DataDir:          envOr("VEKTOR_DATA_DIR", "./data"),
@@ -49,7 +49,7 @@ func Load() (*Config, error) {
 	if cfg.SessionSecret == "" {
 		return nil, fmt.Errorf("VEKTOR_SESSION_SECRET is required")
 	} else if len(cfg.SessionSecret) < 32 {
-		slog.Warn("Session secret is less than 32 characters. This is less secure!")
+		logger.Warn("session secret is less than 32 characters")
 	}
 
 	return cfg, nil

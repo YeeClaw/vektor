@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -28,6 +28,7 @@ func NewOIDC(
 	redirectURL string,
 	sessionSecret []byte,
 	db *sql.DB,
+	logger *slog.Logger,
 ) (*OIDC, error) {
 
 	provider, err := oidc.NewProvider(ctx, issuer)
@@ -44,7 +45,10 @@ func NewOIDC(
 	}
 
 	verifier := provider.Verifier(&oidc.Config{ClientID: clientID})
-	sessionManager := SessionManager{SessionSecret: sessionSecret}
+	sessionManager := SessionManager{
+		SessionSecret: sessionSecret,
+		log:           logger.With("component", "authn.oidc"),
+	}
 
 	return &OIDC{
 		provider:       provider,
@@ -117,7 +121,8 @@ func (a *OIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 		claims.Sub, claims.Email, claims.Name,
 	)
 	if err != nil {
-		log.Printf("error upserting user: %v", err)
+		// Why ErrorContext and not just Error?
+		a.log.ErrorContext(r.Context(), "upserting user failed", "error", err, "user", claims)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}

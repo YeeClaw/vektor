@@ -8,7 +8,7 @@ import (
 func TestLocalRegisterPublicRoutes(t *testing.T) {
 	// A nil *sql.DB is fine: route registration never touches it, and these tests
 	// only look routes up rather than serving them.
-	mux := newTestMux(t, NewLocal([]byte(testSecret), nil))
+	mux := newTestMux(t, NewLocal([]byte(testSecret), nil, discardLogger()))
 
 	tests := []struct {
 		name        string
@@ -32,7 +32,7 @@ func TestLocalRegisterPublicRoutes(t *testing.T) {
 // path is not registered at all, so the distinction is what makes this test say
 // something the previous one does not.
 func TestLocalPublicRoutesAreMethodScoped(t *testing.T) {
-	mux := newTestMux(t, NewLocal([]byte(testSecret), nil))
+	mux := newTestMux(t, NewLocal([]byte(testSecret), nil, discardLogger()))
 
 	for _, path := range []string{"/auth/register", "/auth/login"} {
 		t.Run(path, func(t *testing.T) {
@@ -47,7 +47,7 @@ func TestLocalPublicRoutesAreMethodScoped(t *testing.T) {
 // authenticator must not claim paths outside /auth, and must not register the
 // OIDC callback it has no handler for.
 func TestLocalRegistersNoOtherRoutes(t *testing.T) {
-	mux := newTestMux(t, NewLocal([]byte(testSecret), nil))
+	mux := newTestMux(t, NewLocal([]byte(testSecret), nil, discardLogger()))
 
 	tests := []struct {
 		method string

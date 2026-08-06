@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -21,7 +22,9 @@ const (
 
 func newTestManager(t *testing.T, secret string) *SessionManager {
 	t.Helper()
-	return &SessionManager{SessionSecret: []byte(secret)}
+	// Middleware logs on every rejection path, so a nil logger panics. Tests that
+	// assert on log output use newCapturingManager instead.
+	return &SessionManager{SessionSecret: []byte(secret), log: discardLogger()}
 }
 
 // mustCreateToken mints a valid token or fails the test. Used for setup, where a
@@ -149,28 +152,35 @@ func TestValidateSessionRejectsMalformedToken(t *testing.T) {
 	valid := mustCreateToken(t, sm, &Claims{Sub: "u1"}, time.Hour)
 	payload := payloadOf(t, valid)
 
+	// want pins which branch rejects each token, not merely that one did. Three
+	// distinct sentinels appear here, and which one fires is not always obvious
+	// from the input -- see the per-case notes.
 	tests := []struct {
 		name  string
 		token string
+		want  error
 	}{
-		{"empty token", ""},
-		{"no separator", "nodotshere"},
-		{"payload only, no separator", payload},
-		{"separator but empty signature", payload + "."},
-		{"signature is not base64", payload + ".!!!not-base64!!!"},
+		{"empty token", "", ErrSessionFormat},
+		{"no separator", "nodotshere", ErrSessionFormat},
+		{"payload only, no separator", payload, ErrSessionFormat},
+		// These two reach the HMAC comparison rather than failing earlier: an
+		// empty signature half is valid (if empty) base64, so validation gets as
+		// far as hmac.Equal and fails there against a 32-byte digest.
+		{"separator but empty signature", payload + ".", ErrSessionSignature},
+		{"empty payload and signature", ".", ErrSessionSignature},
+		{"signature is not base64", payload + ".!!!not-base64!!!", ErrSignatureEncoding},
 		// SplitN(token, ".", 2) keeps every extra dot inside the signature half,
 		// so a JWT-shaped three-part token fails to base64-decode. Pinning this
 		// documents that Vektor tokens are two-part, not JWTs.
-		{"extra separator", valid + ".extra"},
-		{"empty payload and signature", "."},
-		{"leading separator", "." + valid},
+		{"extra separator", valid + ".extra", ErrSignatureEncoding},
+		{"leading separator", "." + valid, ErrSignatureEncoding},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			claims, err := sm.ValidateSession(tt.token)
-			if err == nil {
-				t.Errorf("ValidateSession(%q) = %+v, nil error; want error", tt.token, claims)
+			if !errors.Is(err, tt.want) {
+				t.Errorf("ValidateSession(%q) error = %v, want %v", tt.token, err, tt.want)
 			}
 			if claims != nil {
 				t.Errorf("ValidateSession(%q) returned claims %+v, want nil", tt.token, claims)
@@ -185,14 +195,21 @@ func TestValidateSessionRejectsMalformedToken(t *testing.T) {
 func TestValidateSessionRejectsSignedGarbage(t *testing.T) {
 	sm := newTestManager(t, testSecret)
 
+	// Every case here must fail *after* the signature check. Asserting the
+	// sentinel is what proves that: a regression that rejected these at the HMAC
+	// comparison instead would still produce an error, and the old err != nil
+	// assertion would not have noticed.
 	tests := []struct {
 		name    string
 		payload string
+		want    error
 	}{
-		{"payload is not base64", "!!! not base64 !!!"},
-		{"payload is base64 but not JSON", base64.RawURLEncoding.EncodeToString([]byte("plain text, not json"))},
-		{"payload is base64 JSON but not an object", base64.RawURLEncoding.EncodeToString([]byte(`["an","array"]`))},
-		{"payload is empty", ""},
+		{"payload is not base64", "!!! not base64 !!!", ErrPayloadEncoding},
+		{"payload is base64 but not JSON", base64.RawURLEncoding.EncodeToString([]byte("plain text, not json")), ErrSessionData},
+		{"payload is base64 JSON but not an object", base64.RawURLEncoding.EncodeToString([]byte(`["an","array"]`)), ErrSessionData},
+		// An empty payload signs and decodes cleanly; it dies at json.Unmarshal
+		// on empty input, so this is a data failure rather than an encoding one.
+		{"payload is empty", "", ErrSessionData},
 	}
 
 	for _, tt := range tests {
@@ -200,8 +217,8 @@ func TestValidateSessionRejectsSignedGarbage(t *testing.T) {
 			token := mintRaw(testSecret, tt.payload)
 
 			claims, err := sm.ValidateSession(token)
-			if err == nil {
-				t.Errorf("ValidateSession(%q) = %+v, nil error; want error", token, claims)
+			if !errors.Is(err, tt.want) {
+				t.Errorf("ValidateSession(%q) error = %v, want %v", token, err, tt.want)
 			}
 			if claims != nil {
 				t.Errorf("ValidateSession(%q) returned claims %+v, want nil", token, claims)
@@ -243,8 +260,12 @@ func TestValidateSessionRejectsTamperedPayload(t *testing.T) {
 	forged := base64.RawURLEncoding.EncodeToString(tampered) + "." + signature
 
 	got, err := sm.ValidateSession(forged)
-	if err == nil {
-		t.Fatalf("ValidateSession accepted a tampered token, returning %+v; want error", got)
+	// ErrSessionSignature specifically: the tampered payload is still well-formed
+	// base64 JSON, so a build that dropped the HMAC check would reject it later
+	// (or not at all) and a bare err != nil assertion could not tell the
+	// difference.
+	if !errors.Is(err, ErrSessionSignature) {
+		t.Fatalf("ValidateSession(tampered) error = %v, want %v", err, ErrSessionSignature)
 	}
 	if got != nil {
 		t.Errorf("ValidateSession returned claims %+v for a tampered token, want nil", got)
@@ -266,8 +287,8 @@ func TestValidateSessionRejectsForeignKey(t *testing.T) {
 	}
 
 	got, err := validator.ValidateSession(token)
-	if err == nil {
-		t.Fatalf("ValidateSession accepted a foreign-key token, returning %+v; want error", got)
+	if !errors.Is(err, ErrSessionSignature) {
+		t.Fatalf("ValidateSession(foreign key) error = %v, want %v", err, ErrSessionSignature)
 	}
 	if got != nil {
 		t.Errorf("ValidateSession returned claims %+v for a foreign-key token, want nil", got)
@@ -282,8 +303,10 @@ func TestValidateSessionRejectsExpired(t *testing.T) {
 	token := mustCreateToken(t, sm, &Claims{Sub: "u1"}, -time.Minute)
 
 	got, err := sm.ValidateSession(token)
-	if err == nil {
-		t.Fatalf("ValidateSession accepted an expired token, returning %+v; want error", got)
+	// Expiry is the last check in ValidateSession, so this sentinel also proves
+	// the token passed every structural and signature check ahead of it.
+	if !errors.Is(err, ErrSessionExpired) {
+		t.Fatalf("ValidateSession(expired) error = %v, want %v", err, ErrSessionExpired)
 	}
 	if got != nil {
 		t.Errorf("ValidateSession returned claims %+v for an expired token, want nil", got)

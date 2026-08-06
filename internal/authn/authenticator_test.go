@@ -69,7 +69,7 @@ func TestPublicRoutesAreRootRelative(t *testing.T) {
 	}{
 		{
 			name:   "Local",
-			auth:   NewLocal([]byte(testSecret), nil),
+			auth:   NewLocal([]byte(testSecret), nil, discardLogger()),
 			routes: map[string]string{"/auth/register": http.MethodPost, "/auth/login": http.MethodPost},
 		},
 		{
