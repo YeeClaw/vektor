@@ -3,6 +3,7 @@ package authn
 import (
 	"database/sql"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -15,8 +16,11 @@ type Local struct {
 	SessionManager
 }
 
-func NewLocal(sessionSecret []byte, db *sql.DB) *Local {
-	sessionManager := SessionManager{SessionSecret: sessionSecret}
+func NewLocal(sessionSecret []byte, db *sql.DB, logger *slog.Logger) *Local {
+	sessionManager := SessionManager{
+		SessionSecret: sessionSecret,
+		log:           logger.With("component", "authn.local"),
+	}
 	return &Local{
 		SessionManager: sessionManager,
 		db:             db,

@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"log"
+	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -26,20 +28,28 @@ func main() {
 		Short:   "Self-hosted project management",
 		Version: version,
 	}
+	logger := setupLogging()
 
-	root.AddCommand(serveCmd())
+	root.AddCommand(serveCmd(logger))
 
-	if err := root.Execute(); err != nil {
+	if cmd, err := root.ExecuteC(); err != nil {
+		if cmd != nil && cmd.SilenceErrors {
+			logger.Error("startup failed", "error", err)
+		}
 		os.Exit(1)
 	}
 }
 
-func serveCmd() *cobra.Command {
+func serveCmd(logger *slog.Logger) *cobra.Command {
 	return &cobra.Command{
-		Use:   "serve",
-		Short: "Start the Vektor server",
+		Use:           "serve",
+		Short:         "Start the Vektor server",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.Load()
+			// While I could globally call `slog`, I want to make it extra clear
+			// and remove any confusion around calling logs before it's been setup.
+			cfg, err := config.Load(logger)
 			if err != nil {
 				return fmt.Errorf("loading config: %w", err)
 			}
@@ -64,6 +74,7 @@ func serveCmd() *cobra.Command {
 					cfg.OIDCRedirectURL,
 					[]byte(cfg.SessionSecret),
 					database,
+					logger,
 				)
 				if err != nil {
 					return fmt.Errorf("setting up OIDC: %w", err)
@@ -74,31 +85,65 @@ func serveCmd() *cobra.Command {
 				authenticator = authn.NewLocal(
 					[]byte(cfg.SessionSecret),
 					database,
+					logger,
 				)
 			}
 
 			srv = http.Server{
 				Addr:    cfg.ListenAddr,
-				Handler: api.NewServer(database, authenticator),
+				Handler: api.NewServer(database, authenticator, logger),
 			}
 
 			// Graceful shutdown
 			done := make(chan os.Signal, 1)
 			signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
+			errCh := make(chan error, 1)
+			ln, err := net.Listen("tcp", cfg.ListenAddr)
+			if err != nil {
+				return fmt.Errorf("listen: %w", err)
+			}
+			logger.Info("listening", "addr", ln.Addr().String())
+
 			go func() {
-				log.Printf("vektor listening on %s", cfg.ListenAddr)
-				if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-					log.Fatalf("server error: %v", err)
+				if err := srv.Serve(ln); !errors.Is(err, http.ErrServerClosed) {
+					errCh <- err
 				}
 			}()
 
-			<-done
-			log.Println("shutting down...")
+			select {
+			case err := <-errCh:
+				return fmt.Errorf("server error: %w", err)
+			case <-done:
+				logger.Info("shutting down")
+			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			return srv.Shutdown(ctx)
 		},
 	}
+}
+
+// Create a structure logger. Sets log level via config and if none is present,
+// it will default to `slog.LevelInfo`.
+func setupLogging() *slog.Logger {
+	lvl := new(slog.LevelVar)
+	configValue := []byte(os.Getenv("VEKTOR_LOG_LEVEL"))
+	if err := lvl.UnmarshalText(configValue); err != nil {
+		lvl.Set(slog.LevelInfo)
+	}
+
+	opts := &slog.HandlerOptions{Level: lvl}
+
+	var h slog.Handler
+	if os.Getenv("VEKTOR_LOG_FORMAT") == "text" {
+		h = slog.NewTextHandler(os.Stdout, opts)
+	} else {
+		h = slog.NewJSONHandler(os.Stdout, opts)
+	}
+
+	log := slog.New(h)
+	slog.SetDefault(log)
+	return log
 }
