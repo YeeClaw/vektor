@@ -12,6 +12,7 @@ web/dist/
 *.db
 *.db-journal
 *.db-wal
+/data
 
 # Environment
 .env

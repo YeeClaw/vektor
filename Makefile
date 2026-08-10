@@ -9,6 +9,9 @@ build:
 	mkdir -p bin
 	go build $(LDFLAGS) -o $(BINARY) ./cmd/vek
 
+dev: build
+	set -a; . ./.env; set +a; ./$(BINARY) serve
+
 run: build
 	./$(BINARY) serve
 
@@ -21,3 +24,6 @@ check:
 
 clean:
 	rm -rf bin
+
+dev-reset:
+	rm -rf data
