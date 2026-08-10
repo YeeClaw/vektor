@@ -47,7 +47,15 @@ var migrations = []string{
 	)`,
 	`
 	ALTER TABLE users ADD COLUMN password_hash TEXT
-	`, // Later, let's make sure that other snippets follow this format
+	`,
+	`CREATE TABLE IF NOT EXISTS api_tokens (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL REFERENCES users(id),
+		token_hash TEXT NOT NULL UNIQUE,
+		name TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		expires_at DATETIME
+	)`, // nullable expiration means no expiration for null values
 }
 
 func migrate(db *sql.DB) error {
