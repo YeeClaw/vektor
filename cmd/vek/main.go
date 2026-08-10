@@ -54,11 +54,11 @@ func serveCmd(logger *slog.Logger) *cobra.Command {
 				return fmt.Errorf("loading config: %w", err)
 			}
 
-			database, err := db.Open(cfg.DataDir)
+			store, err := db.Open(cmd.Context(), cfg.DataDir, logger)
 			if err != nil {
 				return fmt.Errorf("opening database: %w", err)
 			}
-			defer database.Close()
+			defer store.Close()
 
 			var srv http.Server
 			var authenticator authn.Authenticator
@@ -73,7 +73,7 @@ func serveCmd(logger *slog.Logger) *cobra.Command {
 					cfg.OIDCClientSecret,
 					cfg.OIDCRedirectURL,
 					[]byte(cfg.SessionSecret),
-					database,
+					store.DB,
 					logger,
 				)
 				if err != nil {
@@ -84,14 +84,14 @@ func serveCmd(logger *slog.Logger) *cobra.Command {
 			} else {
 				authenticator = authn.NewLocal(
 					[]byte(cfg.SessionSecret),
-					database,
+					store.DB,
 					logger,
 				)
 			}
 
 			srv = http.Server{
 				Addr:    cfg.ListenAddr,
-				Handler: api.NewServer(database, authenticator, logger),
+				Handler: api.NewServer(store.DB, authenticator, logger),
 			}
 
 			// Graceful shutdown
