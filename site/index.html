@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vektor — fast, local project management without the ceremony</title>
+  <meta name="description"
+        content="Fast, local project management without the ceremony: a desktop app and CLI over one
+        SQLite file, agent-native, with an optional server.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script src="site.js" defer></script>
+</head>
+<body>
+
+<!-- ============================================================
+     Header ============================================================ -->
+<header class="site-header">
+  <a class="brand" href="#top" aria-label="Vektor home">
+    <span class="brand-mark" aria-hidden="true">›_</span>
+    <span class="brand-name">Vektor</span>
+  </a>
+  <nav class="site-nav" aria-label="Sections">
+    <a href="#how">How it works</a>
+    <a href="#app">Desktop</a>
+    <a href="#server">Server</a>
+    <a href="#cli">CLI</a>
+    <a href="#keys">Keyboard</a>
+    <a href="#not">Without</a>
+    <a href="#status">Status</a>
+    <a href="https://forge.coltco.net/austin/vektor" rel="external">Source</a>
+  </nav>
+  <button class="theme-toggle" type="button" data-theme-toggle
+          aria-label="Toggle colour scheme" title="Toggle light / dark / system">
+    <span data-theme-label>system</span>
+  </button>
+</header>
+
+<main id="top">
+
+  <!-- ==========================================================
+       Hero
+       ========================================================== -->
+  <section class="hero">
+    <p class="eyebrow">CLI-first · Local-first · Agent-native</p>
+    <h1>Fast, local project management — without the ceremony.</h1>
+    <p class="lede">
+      Vektor is for individuals and small teams who want to go fast. Projects, issues, and comments
+      in a desktop app with a killer command line, first-class local support. No server or account
+      required, no setup, and no sprint planning. When you <i>want</i> to share it, the same binary
+      hosts a server and the same app points at it.
+    </p>
+    <div class="hero-actions">
+      <a class="button primary" href="https://forge.coltco.net/austin/vektor" rel="external">
+        Source on Forgejo
+      </a>
+      <a class="button" href="#status">Where it stands</a>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       Terminal sample
+       ========================================================== -->
+  <section class="sample" aria-labelledby="sample-title">
+    <h2 id="sample-title" class="visually-hidden">What it looks like</h2>
+    <pre class="terminal"><code><span class="line"><span class="comment"># the window, over ~/.local/share/vektor — nothing to configure</span></span>
+<span class="line"><span class="prompt">$</span> vek app</span>
+<span class="gap"></span>
+<span class="line"><span class="prompt">$</span> vek issue create --project VEK --title "Wire up the board view"</span>
+<span class="line out"><span class="ok">VEK-54</span>  Wire up the board view  ·  backlog  ·  none</span>
+<span class="line"><span class="prompt">$</span> vek issue move VEK-54 in_progress</span>
+<span class="gap"></span>
+<span class="line"><span class="comment"># a bare number works when a default project is set</span></span>
+<span class="line"><span class="prompt">$</span> vek issue view 54</span>
+<span class="gap"></span>
+<span class="line"><span class="comment"># --json on every command, mutations included</span></span>
+<span class="line"><span class="prompt">$</span> vek issue list --json | jq -r '.[] | select(.priority == "urgent") | .ref'</span>
+<span class="gap"></span>
+<span class="line"><span class="comment"># from a Forgejo or GitHub export; issue numbers are preserved</span></span>
+<span class="line"><span class="prompt">$</span> vek import --file backlog.json</span></code></pre>
+    <p class="caption">
+      Every command runs against the local file with nothing else running, in about 20&nbsp;ms.
+    </p>
+  </section>
+
+  <!-- ==========================================================
+       How it works
+       ========================================================== -->
+  <section id="how" class="section" aria-labelledby="how-title">
+    <h2 id="how-title">How it works</h2>
+    <div class="carousel" data-carousel data-carousel-interval="6000">
+    <div class="carousel-track" role="group" aria-labelledby="how-title" tabindex="0">
+      <article class="card">
+        <h3>Local mode</h3>
+        <p>
+          The default. Data is a SQLite file under <code>~/.local/share/vektor</code>; whoever can
+          read the file is the user, just like a git repository. Identity comes from
+          <code>git config user.email</code>.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Server mode</h3>
+        <p>
+          The exact same app pointed at a hosted instance and authenticated by an API token the
+          machine holds. You can toggle it in Settings or with <code>vek config set-server</code>.
+          Switching never moves data.
+        </p>
+      </article>
+      <article class="card">
+        <h3>One UI, two hosts</h3>
+        <p>
+          The web UI is embedded in the binary. <code>vek app</code> shows it in a native window and
+          <code>vek serve</code> serves it to a team. It's the same code, same behaviour, no feature
+          the browser cannot do.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Two builds, one module</h3>
+        <p>
+          <code>vek</code> desktop links the OS webview for the window. <code>vek</code> headless is
+          pure Go and static built for servers and CI with every command except
+          <code>vek app</code>. Copy it to a machine and it is just <code>vek</code>.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Small on purpose</h3>
+        <p>
+          It has projects, issues, labels, comments, status, priority, and assignee with references
+          like <code>VEK-53</code>. Import from a forge export. Backups are
+          <code>sqlite3 .backup</code>. That is the whole data model.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Not a forge</h3>
+        <p>
+          Code, pull requests, review, and CI stay on Forgejo, GitHub, or wherever they are. Vektor
+          links out and never mirrors.
+        </p>
+      </article>
+    </div>
+    <div class="carousel-dots" data-carousel-dots role="group" aria-label="Pages of cards" hidden>
+    </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       The desktop app
+       ========================================================== -->
+  <section id="app" class="section" aria-labelledby="app-title">
+    <h2 id="app-title">The desktop app</h2>
+    <p class="section-lede">
+      <code>vek app</code> is the web UI in a native window over your local
+      data. It is the whole product on one machine. Deliberately, it is nothing more than what the
+      browser gets: no native-only features beyond the window itself, so there is only one UI to
+      keep honest.
+    </p>
+    <!-- A mock of the window. Pure HTML/CSS; glyphs are the <symbol>s below,
+         reused with <use>. Not a screenshot: the app is being built. -->
+    <figure class="mock" aria-labelledby="mock-caption">
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+          <symbol id="g-backlog" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 1.6"/>
+          </symbol>
+          <symbol id="g-todo" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          </symbol>
+          <symbol id="g-progress" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M8 8V2.4A5.6 5.6 0 0 1 8 13.6Z" fill="currentColor"/>
+          </symbol>
+          <symbol id="g-done" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6.4" fill="currentColor"/>
+            <path d="m5.2 8.2 2 2 3.6-4" fill="none" stroke="var(--mock-bg)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </symbol>
+          <symbol id="g-cancel" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6.4" fill="currentColor"/>
+            <path d="m5.8 5.8 4.4 4.4M10.2 5.8l-4.4 4.4" fill="none" stroke="var(--mock-bg)" stroke-width="1.6" stroke-linecap="round"/>
+          </symbol>
+          <symbol id="p-urgent" viewBox="0 0 16 16">
+            <rect x="2.5" y="2.5" width="11" height="11" rx="2.4" fill="currentColor"/>
+            <rect x="7.2" y="5" width="1.6" height="4.4" rx=".8" fill="var(--mock-bg)"/>
+            <rect x="7.2" y="10.4" width="1.6" height="1.6" rx=".8" fill="var(--mock-bg)"/>
+          </symbol>
+          <symbol id="p-high" viewBox="0 0 16 16">
+            <rect x="3" y="8" width="2.6" height="5" rx=".8" fill="currentColor"/>
+            <rect x="6.7" y="5" width="2.6" height="8" rx=".8" fill="currentColor"/>
+            <rect x="10.4" y="2" width="2.6" height="11" rx=".8" fill="currentColor"/>
+          </symbol>
+          <symbol id="p-medium" viewBox="0 0 16 16">
+            <rect x="3" y="8" width="2.6" height="5" rx=".8" fill="currentColor"/>
+            <rect x="6.7" y="5" width="2.6" height="8" rx=".8" fill="currentColor"/>
+            <rect x="10.4" y="2" width="2.6" height="11" rx=".8" fill="currentColor" opacity=".28"/>
+          </symbol>
+          <symbol id="p-low" viewBox="0 0 16 16">
+            <rect x="3" y="8" width="2.6" height="5" rx=".8" fill="currentColor"/>
+            <rect x="6.7" y="5" width="2.6" height="8" rx=".8" fill="currentColor" opacity=".28"/>
+            <rect x="10.4" y="2" width="2.6" height="11" rx=".8" fill="currentColor" opacity=".28"/>
+          </symbol>
+          <symbol id="p-none" viewBox="0 0 16 16">
+            <rect x="3" y="7.2" width="10" height="1.6" rx=".8" fill="currentColor" opacity=".45"/>
+          </symbol>
+        </defs>
+      </svg>
+
+      <div class="mock-window">
+        <div class="mock-titlebar" aria-hidden="true">
+          <span class="mock-dots"><i></i><i></i><i></i></span>
+          <span class="mock-title">Vektor — VEK · Vektor</span>
+        </div>
+
+        <div class="mock-body">
+          <aside class="mock-side">
+            <div class="mock-brand"><span class="brand-mark">›_</span> Vektor</div>
+            <div class="mock-nav">
+              <div class="mock-navitem">My Issues</div>
+              <div class="mock-navitem">Projects <span class="mock-count">3</span></div>
+            </div>
+            <div class="mock-navlabel">Projects</div>
+            <div class="mock-nav">
+              <div class="mock-navitem is-current">
+                <span class="mock-key">VEK</span> Vektor <span class="mock-count">36</span>
+              </div>
+              <div class="mock-navitem">
+                <span class="mock-key alt">BLOG</span> Blog <span class="mock-count">12</span>
+              </div>
+              <div class="mock-navitem">
+                <span class="mock-key alt2">OPS</span> Homelab <span class="mock-count">9</span>
+              </div>
+            </div>
+            <div class="mock-navlabel">Instance</div>
+            <div class="mock-nav"><div class="mock-navitem">Settings</div></div>
+            <div class="mock-foot">Local · ~/.local/share/vektor</div>
+          </aside>
+
+          <section class="mock-main">
+            <div class="mock-topbar">
+              <span class="mock-crumb"><span class="mock-key">VEK</span> Vektor</span>
+              <span class="mock-chips">
+                <span class="mock-chip">status: open</span><span class="mock-chip">assignee:
+                me</span>
+              </span>
+              <span class="mock-views"><span class="is-current">List</span><span>Board</span></span>
+            </div>
+
+            <div class="mock-group">
+              <div class="mock-grouphead">
+                <svg class="glyph st-progress"><use href="#g-progress"/></svg> In Progress
+                <span class="mock-count">2</span>
+              </div>
+              <div class="mock-row is-cursor">
+                <span class="mock-ref">VEK-48</span>
+                <svg class="glyph pr-high"><use href="#p-high"/></svg>
+                <svg class="glyph st-progress"><use href="#g-progress"/></svg>
+                <span class="mock-rowtitle">Replace migrations slice with dedicated SQL files</span>
+                <span class="mock-tag t1">db</span>
+                <span class="mock-meta">2h <i class="mock-avatar">A</i></span>
+                <!-- the `s` menu, open on the cursor row -->
+                <div class="mock-menu" role="presentation">
+                  <div>
+                    <kbd>1</kbd><svg class="glyph st-backlog"><use href="#g-backlog"/></svg> Backlog
+                  </div>
+                  <div><kbd>2</kbd><svg class="glyph st-todo"><use href="#g-todo"/></svg> Todo</div>
+                  <div class="is-current">
+                    <kbd>3</kbd><svg class="glyph st-progress"><use href="#g-progress"/></svg> In
+                    Progress
+                  </div>
+                  <div><kbd>4</kbd><svg class="glyph st-done"><use href="#g-done"/></svg> Done</div>
+                  <div>
+                    <kbd>5</kbd><svg class="glyph st-cancel"><use href="#g-cancel"/></svg> Cancelled
+                  </div>
+                </div>
+              </div>
+              <div class="mock-row">
+                <span class="mock-ref">VEK-13</span>
+                <svg class="glyph pr-medium"><use href="#p-medium"/></svg>
+                <svg class="glyph st-progress"><use href="#g-progress"/></svg>
+                <span class="mock-rowtitle">Extract service/store layer from API handlers</span>
+                <span class="mock-tag t2">api</span>
+                <span class="mock-meta">1d <i class="mock-avatar">A</i></span>
+              </div>
+            </div>
+
+            <div class="mock-group">
+              <div class="mock-grouphead">
+                <svg class="glyph st-todo"><use href="#g-todo"/></svg> Todo
+                <span class="mock-count">3</span>
+              </div>
+              <div class="mock-row">
+                <span class="mock-ref">VEK-14</span>
+                <svg class="glyph pr-high"><use href="#p-high"/></svg>
+                <svg class="glyph st-todo"><use href="#g-todo"/></svg>
+                <span class="mock-rowtitle">Add structured JSON error responses</span>
+                <span class="mock-tag t2">api</span>
+                <span class="mock-meta">3d <i class="mock-avatar">A</i></span>
+              </div>
+              <div class="mock-row">
+                <span class="mock-ref">VEK-53</span>
+                <svg class="glyph pr-medium"><use href="#p-medium"/></svg>
+                <svg class="glyph st-todo"><use href="#g-todo"/></svg>
+                <span class="mock-rowtitle">Add comments to issues</span>
+                <span class="mock-tag t1">db</span>
+                <span class="mock-meta">3d <i class="mock-avatar">–</i></span>
+              </div>
+              <div class="mock-row">
+                <span class="mock-ref">VEK-54</span>
+                <svg class="glyph pr-low"><use href="#p-low"/></svg>
+                <svg class="glyph st-todo"><use href="#g-todo"/></svg>
+                <span class="mock-rowtitle">
+                  Bootstrap: import Vektor's Forgejo issues into Vektor
+                </span>
+                <span class="mock-tag t3">import</span>
+                <span class="mock-meta">1w <i class="mock-avatar">–</i></span>
+              </div>
+            </div>
+
+            <div class="mock-group">
+              <div class="mock-grouphead">
+                <svg class="glyph st-backlog"><use href="#g-backlog"/></svg> Backlog
+                <span class="mock-count">2</span>
+              </div>
+              <div class="mock-row">
+                <span class="mock-ref">VEK-33</span>
+                <svg class="glyph pr-none"><use href="#p-none"/></svg>
+                <svg class="glyph st-backlog"><use href="#g-backlog"/></svg>
+                <span class="mock-rowtitle">Vim motions in the web UI</span>
+                <span class="mock-tag t4">web</span>
+                <span class="mock-meta">2w <i class="mock-avatar">–</i></span>
+              </div>
+              <div class="mock-row is-done">
+                <span class="mock-ref">VEK-50</span>
+                <svg class="glyph pr-urgent"><use href="#p-urgent"/></svg>
+                <svg class="glyph st-done"><use href="#g-done"/></svg>
+                <span class="mock-rowtitle">SQLite DSN uses wrong driver syntax</span>
+                <span class="mock-tag t1">db</span>
+                <span class="mock-meta">3w <i class="mock-avatar">A</i></span>
+              </div>
+            </div>
+
+            <div class="mock-showcmd" aria-hidden="true">s</div>
+          </section>
+        </div>
+      </div>
+      <figcaption id="mock-caption" class="caption">
+        A mock, not a screenshot: the list view with the cursor on VEK-48 and the <kbd>s</kbd>
+        status menu open. Colours follow the page theme — try <kbd>t</kbd>.
+      </figcaption>
+    </figure>
+
+    <ol class="walkthrough">
+      <li>
+        <h3>Launch</h3>
+        <p>
+          Run <code>vek app</code>, or click the icon. The window opens on your issues in well under
+          a second; a 25 MB binary linking the webview your OS already has, not a bundled browser.
+          No login, no account, and no first-run wizard.
+        </p>
+      </li>
+      <li>
+        <h3>Look around</h3>
+        <p>
+          A sidebar of projects; a list grouped by status; a board of status columns over the same
+          filters; an issue view with the description, comments, and the branch chip that links out
+          to your forge. Filters live in the URL, so a view is a link you can paste. Bodies and
+          comments render as beautiful markdown, and <code>VEK-53</code> or <code>#53</code> in text
+          is a link inside the app.
+        </p>
+      </li>
+      <li>
+        <h3>Work without leaving the keyboard</h3>
+        <p>
+          <kbd>j</kbd>/<kbd>k</kbd> to the issue, <kbd>s</kbd> to change status, <kbd>p</kbd>
+          priority, <kbd>a</kbd> assignee, <kbd>x</kbd> to finish it, <kbd>u</kbd> if you didn't
+          mean to. <kbd>i</kbd> edits the title in place, <kbd>e</kbd> the description, <kbd>r</kbd>
+          replies. <kbd>⌘K</kbd> finds anything across projects. Every change applies instantly and
+          reverts if the write fails.
+        </p>
+      </li>
+      <li>
+        <h3>Use the terminal alongside it</h3>
+        <p>
+          With the window open, <code>vek issue move VEK-53 done</code> in a shell shows up in the
+          window at once. The CLI finds the running app and routes through it rather than going
+          around it. Terminal and window are two views of one thing.
+        </p>
+      </li>
+      <li>
+        <h3>Make it yours</h3>
+        <p>
+          Settings → Appearance: a preset (Ember, Rose, Gold, Moss, Sky, Indigo, Slate) or your own
+          three sliders; light, dark, or follow the system; a density control that scales the whole
+          interface.
+        </p>
+      </li>
+      <li>
+        <h3>Point it at a server, later</h3>
+        <p>
+          Settings → Desktop: switch from <em>Local</em> to <em>Server</em>, paste the URL and a
+          token, and the same window is now looking at a hosted instance while it stays open.
+          Switching doesn't move data; when you want your local issues on the server,
+          <code>vek import</code> carries them over with their numbers. If you switch back, the
+          server URL is remembered.
+        </p>
+      </li>
+    </ol>
+    <p class="caption">
+      One runtime dependency on Linux — WebKitGTK 4.1, which most desktops already have; macOS uses
+      WKWebView and Windows WebView2, both built in. A headless build of the same binary, without
+      the window, has no dependencies at all and is what runs on servers and in CI.
+    </p>
+  </section>
+
+  <!-- ==========================================================
+       Server / deploy
+       ========================================================== -->
+  <section id="server" class="section" aria-labelledby="server-title">
+    <h2 id="server-title">Deploys in seconds</h2>
+    <p class="section-lede">
+      When one machine stops being enough, the same binary is the server. One container, one SQLite
+      file, no database service, no queue, no object store — the whole thing fits on the smallest
+      box in the homelab.
+    </p>
+    <div class="split">
+      <pre class="terminal"><code><span class="line"><span class="comment"># docker-compose.yml</span></span>
+<span class="line">services:</span>
+<span class="line">  vektor:</span>
+<span class="line">    image: forge.coltco.net/austin/vektor:latest</span>
+<span class="line">    ports: ["8659:8659"]</span>
+<span class="line">    volumes: ["vektor-data:/data"]</span>
+<span class="line">    environment:</span>
+<span class="line">      VEKTOR_LOCAL_AUTH: "true"</span>
+<span class="line">      VEKTOR_SESSION_SECRET: "change-me"</span>
+<span class="line">    restart: unless-stopped</span>
+<span class="line">volumes:</span>
+<span class="line">  vektor-data:</span>
+<span class="gap"></span>
+<span class="line"><span class="prompt">$</span> docker compose up -d</span>
+<span class="line"><span class="prompt">$</span> vek config set-server https://vektor.example.com</span></code></pre>
+      <ul class="checks">
+        <li>
+          <strong>One image, one process.</strong> A static Go binary on Alpine, running as a
+          non-root user, with a healthcheck.
+        </li>
+        <li>
+          <strong>Your data is only yours.</strong> Everything lives in the <code>/data</code>
+          volume. Back it up with <code>sqlite3 .backup</code> and restore it by copying it back.
+        </li>
+        <li>
+          <strong>Local accounts or OIDC.</strong> Start with local auth and nothing else. Point it
+          at Authentik, Authelia, or any OIDC provider when you want SSO.
+        </li>
+        <li>
+          <strong>Devices, not sessions.</strong> The desktop app and the CLI authenticate with an
+          API token you mint once.
+        </li>
+        <li>
+          <strong>Behind your proxy.</strong> Plain HTTP on one port; TLS, hostnames, and access
+          rules stay with Caddy, Traefik, or nginx where they already are.
+        </li>
+        <li>
+          <strong>Or no Docker at all.</strong> Copy the headless binary to the machine and run
+          <code>vek serve</code>. It is the same <code>vek</code>.
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       CLI / agent-native
+       ========================================================== -->
+  <section id="cli" class="section" aria-labelledby="cli-title">
+    <h2 id="cli-title">The CLI is the agent interface</h2>
+    <p class="section-lede">
+      There is no MCP server. The command line was built so that a person, a script, or an agent can
+      drive it from <code>--help</code> and a
+      <code>SKILL.md</code> alone.
+    </p>
+    <ul class="checks">
+      <li>
+        <strong><code>--json</code> on every command</strong>, mutations included. Create an issue,
+        get the ref back as data.
+      </li>
+      <li>
+        <strong>One structured error shape</strong>, shared with the HTTP API:
+        <code class="wrap">{"error", "message", "details": [{"field", "message"}]}</code>.
+      </li>
+      <li><strong>Human refs everywhere.</strong> The CLI never handles a UUID.</li>
+      <li>
+        <strong>No prompt traps.</strong> <code>--password-stdin</code>, <code>--body</code>;
+        nothing opens <code>$EDITOR</code> or waits on a TTY unless there is one.
+      </li>
+      <li>
+        <strong>Zero setup.</strong> Local mode has nothing to log in to and nothing to configure.
+      </li>
+    </ul>
+  </section>
+
+  <!-- ==========================================================
+       Keyboard
+       ========================================================== -->
+  <section id="keys" class="section" aria-labelledby="keys-title">
+    <h2 id="keys-title">Keyboard-first, vim-shaped</h2>
+    <p class="section-lede">
+      Counts, chords, and a showcmd indicator. Every motion has a mouse equivalent.
+    </p>
+    <dl class="keys">
+      <div>
+        <dt><kbd>j</kbd> <kbd>k</kbd> <kbd>5j</kbd> <kbd>gg</kbd> <kbd>G</kbd></dt>
+        <dd>move, with counts</dd>
+      </div>
+      <div>
+        <dt><kbd>{</kbd> <kbd>}</kbd></dt>
+        <dd>between status groups</dd>
+      </div>
+      <div>
+        <dt><kbd>h</kbd> <kbd>l</kbd> <kbd>0</kbd> <kbd>$</kbd></dt>
+        <dd>across board columns</dd>
+      </div>
+      <div>
+        <dt><kbd>Enter</kbd> <kbd>h</kbd> <kbd>J</kbd> <kbd>K</kbd></dt>
+        <dd>open, back, next / previous while reading</dd>
+      </div>
+      <div>
+        <dt><kbd>s</kbd> <kbd>p</kbd> <kbd>a</kbd></dt>
+        <dd>status, priority, assignee</dd>
+      </div>
+      <div>
+        <dt><kbd>x</kbd> <kbd>dd</kbd> <kbd>u</kbd> <kbd>yy</kbd></dt>
+        <dd>done, cancel, undo, copy the ref</dd>
+      </div>
+      <div>
+        <dt><kbd>/</kbd> <kbd>⌘K</kbd> <kbd>:</kbd> <kbd>?</kbd></dt>
+        <dd>search, palette, commands, the sheet</dd>
+      </div>
+      <div>
+        <dt><kbd>t</kbd></dt>
+        <dd>light / dark / system</dd>
+      </div>
+    </dl>
+    <p class="caption">
+      Themes are hue, chroma, and tint. Ember by default; Rose, Gold, Moss, Sky, Indigo, Slate; or
+      your own on a slider.
+    </p>
+  </section>
+
+  <!-- ==========================================================
+       What it is not
+       ========================================================== -->
+  <section id="not" class="section" aria-labelledby="not-title">
+    <h2 id="not-title">What Vektor won't make you do</h2>
+    <p class="section-lede">
+      Vektor wants to <i>capture the data</i>, not build the ceremony. Dates, history, and metrics
+      are welcome, but rituals are not.
+    </p>
+    <ul class="nots">
+      <li>
+        <strong>Plan sprints.</strong> No cycles or velocity to bother you. Work is a list with a
+        status.
+      </li>
+      <li>
+        <strong>Maintain a roadmap.</strong> There is no timeline view to maintain, and no
+        initiative hierarchy. Bring your own plan; the issues are just the record.
+      </li>
+      <li>
+        <strong>Triage notifications.</strong> Nothing harasses your attention. Ask
+        <code>vek issue list</code> or open the window.
+      </li>
+      <li>
+        <strong>Administer permissions.</strong> No roles or per-project access matrix. On a hosted
+        instance, an account is just an account.
+      </li>
+      <li>
+        <strong>Move your code.</strong> Vektor is not a forge. Code, PRs, review, and CI stay where
+        they are.
+      </li>
+    </ul>
+  </section>
+
+  <!-- ==========================================================
+       Status
+       ========================================================== -->
+  <section id="status" class="section" aria-labelledby="status-title">
+    <h2 id="status-title">Where it stands</h2>
+    <p>
+      Under active development and not yet released. Direction has been settled with desktop and
+      local support first, then server afterwards. Phase one, the local CLI and the desktop app, is
+      being built now. The
+      <a href="https://forge.coltco.net/austin/vektor/issues" rel="external">issues on Forgejo</a>
+      are the live backlog, and the <code>README</code> in the repository is the technical
+      documentation.
+    </p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>
+    Vektor · Project management for individuals and small teams who want to go fast without
+    ceremony. <a href="https://forge.coltco.net/austin/vektor" rel="external">Source</a>
+  </p>
+</footer>
+
+</body>
+</html>
