@@ -3,13 +3,19 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
+
+
+var timeFormat string = "2006-01-02 15:04:05"
 
 // Store is a lightweight and purpose built SQL wrapper designed around the specs
 // of this application.
@@ -57,4 +63,78 @@ func (s *Store) Close() error {
 	}
 
 	return nil
+}
+
+type APIToken struct {
+	TokenID, TokenName, UserID, UserName, Email string
+	ExpiresAt                                   *time.Time
+}
+
+var ErrTokenNotFound = errors.New("api token not found")
+
+// LookupAPIToken searches for a given (hashed) API token and returns the joined user
+// with respective claims.
+func (s *Store) LookupAPIToken(ctx context.Context, hashedToken string) (*APIToken, error) {
+	row := s.QueryRowContext(ctx,
+		`
+		SELECT t.id, t.name, t.expires_at, u.id, u.name, u.email
+		FROM   api_tokens t
+		JOIN   users u ON u.id = t.user_id
+		WHERE  t.token_hash = ?
+		`,
+		hashedToken,
+	)
+
+	var owner APIToken
+	err := row.Scan(
+		&owner.TokenID,
+		&owner.TokenName,
+		&owner.ExpiresAt,
+		&owner.UserID,
+		&owner.UserName,
+		&owner.Email,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrTokenNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("unable to query for the provided token: %w", err)
+	}
+
+	return &owner, nil
+}
+
+type CreateAPITokenInput struct {
+	UserID, HashedToken, TokenName string
+	ExpiresAt                      *time.Time
+}
+
+// CreateAPIToken takes a given (hashed) API token and inserts it into the database.
+func (s *Store) CreateAPIToken(ctx context.Context, input CreateAPITokenInput) (string, error) {
+	id := uuid.New().String()
+
+	var expiresAt sql.NullString
+	if input.ExpiresAt != nil {
+		expiresAt = sql.NullString{
+			String: input.ExpiresAt.UTC().Format(timeFormat),
+			Valid:  true,
+		}
+	}
+
+	_, err := s.ExecContext(ctx,
+		`
+		INSERT INTO api_tokens (id, user_id, token_hash, name, expires_at)
+		VALUES (?, ?, ?, ?, ?)
+		`,
+		id,
+		input.UserID,
+		input.HashedToken,
+		input.TokenName,
+		expiresAt,
+	)
+	if err != nil {
+		return "", fmt.Errorf("unable to insert api token record: %w", err)
+	}
+
+	return id, nil
 }
